@@ -1,64 +1,29 @@
 import { useState, useEffect } from 'react';
-import { fetchProperties } from '../lib/api/properties/propertiesApi';
-import { featuredProperties } from '../data/properties';
+import { getProperties } from '../lib/api/content';
 import type { Property } from '../types/property';
-import type { PropertyApiError } from '../lib/api/properties/types';
 
-interface PropertiesState {
-  properties: Property[];
-  loading: boolean;
-  error: PropertyApiError | null;
-}
-
-export function useProperties(useFallback = true) {
-  const [state, setState] = useState<PropertiesState>({
-    properties: [],
-    loading: true,
-    error: null
-  });
+export function useProperties() {
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let mounted = true;
-
-    async function loadProperties() {
+    const loadProperties = async () => {
       try {
-        setState(prev => ({ ...prev, loading: true, error: null }));
-        const data = await fetchProperties();
-        
-        if (mounted) {
-          setState({
-            properties: data,
-            loading: false,
-            error: null
-          });
-        }
+        setLoading(true);
+        setError(null);
+        const data = await getProperties();
+        setProperties(data);
       } catch (err) {
         console.error('Error loading properties:', err);
-        
-        if (mounted) {
-          if (useFallback) {
-            setState({
-              properties: featuredProperties,
-              loading: false,
-              error: null
-            });
-          } else {
-            setState(prev => ({
-              ...prev,
-              loading: false,
-              error: err as PropertyApiError
-            }));
-          }
-        }
+        setError('Error al cargar las propiedades. Por favor, inténtalo de nuevo más tarde.');
+      } finally {
+        setLoading(false);
       }
-    }
+    };
 
     loadProperties();
+  }, []);
 
-    return () => {
-      mounted = false;
-    };
-  }, [useFallback]);
-
-  return state;
+  return { properties, loading, error };
 }
